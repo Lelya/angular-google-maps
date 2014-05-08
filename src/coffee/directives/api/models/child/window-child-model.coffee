@@ -12,15 +12,27 @@ angular.module("google-maps.directives.api.models.child")
                     @markerCtrl.setClickable(true) if @markerCtrl?
 
                     @handleClick()
+                    @watchElement()
                     @watchShow()
                     @watchCoords()
                     @$log.info(@)
 
+                watchElement:=>
+                    @scope.$watch =>
+                        return if not @element or not @html
+                        if @html != @element.html() #has content changed?
+                            if @gWin
+                                @opts?.content = undefined
+                                @remove()
+                                @createGWin()
+                                @showHide()
+
                 createGWin:() =>
-                    if !@gWin? and @markerCtrl?
+                    if !@gWin?
                         defaults = if @opts? then @opts else {}
-                        html = if _.isObject(@element) then @element.html() else @element
-                        @opts = if @markerCtrl? then @createWindowOptions(@markerCtrl, @scope, html, defaults) else {}
+                        if @element
+                          @html = if _.isObject(@element) then @element.html() else @element
+                        @opts = @createWindowOptions(@markerCtrl, @scope, @html, defaults)
 
                     if @opts? and !@gWin
                         if @opts.boxClass and (window.InfoBox && typeof window.InfoBox == 'function')
@@ -90,20 +102,29 @@ angular.module("google-maps.directives.api.models.child")
                     else
                       show()
 
+                showHide: ->
+                    if @scope.show
+                        @showWindow()
+                    else
+                        @hideWindow()
+
                 getLatestPosition: () =>
                     @gWin.setPosition @markerCtrl.getPosition() if @gWin? and @markerCtrl?
 
                 hideWindow: () =>
                   @gWin.close() if @gWin? and @gWin.isOpen()
 
+                remove: =>
+                  @hideWindow()
+                  _.each @googleMapsHandles, (h) ->
+                    google.maps.event.removeListener h
+                  @googleMapsHandles.length = 0
+                  delete @gWin
+
                 destroy: (manualOverride = false)=>
-                    @hideWindow()
-                    _.each @googleMapsHandles, (h) ->
-                        google.maps.event.removeListener h
-                    @googleMapsHandles.length = 0
+                    @remove()
                     if @scope? and (@needToManualDestroy or manualOverride)
                         @scope.$destroy()
-                    delete @gWin
                     self = undefined
 
             WindowChildModel

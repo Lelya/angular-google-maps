@@ -1,4 +1,4 @@
-/*! angular-google-maps 1.0.13 2014-05-06
+/*! angular-google-maps 1.0.13 2014-05-07
  *  AngularJS directives for Google Maps
  *  git: https://github.com/nlaplante/angular-google-maps.git
  */
@@ -1845,6 +1845,7 @@ Nicholas McCready - https://twitter.com/nmccready
           this.needToManualDestroy = needToManualDestroy != null ? needToManualDestroy : false;
           this.markerIsVisibleAfterWindowClose = markerIsVisibleAfterWindowClose != null ? markerIsVisibleAfterWindowClose : true;
           this.destroy = __bind(this.destroy, this);
+          this.remove = __bind(this.remove, this);
           this.hideWindow = __bind(this.hideWindow, this);
           this.getLatestPosition = __bind(this.getLatestPosition, this);
           this.showWindow = __bind(this.showWindow, this);
@@ -1852,6 +1853,7 @@ Nicholas McCready - https://twitter.com/nmccready
           this.watchCoords = __bind(this.watchCoords, this);
           this.watchShow = __bind(this.watchShow, this);
           this.createGWin = __bind(this.createGWin, this);
+          this.watchElement = __bind(this.watchElement, this);
           this.googleMapsHandles = [];
           this.$log = Logger;
           this.createGWin();
@@ -1859,18 +1861,41 @@ Nicholas McCready - https://twitter.com/nmccready
             this.markerCtrl.setClickable(true);
           }
           this.handleClick();
+          this.watchElement();
           this.watchShow();
           this.watchCoords();
           this.$log.info(this);
         }
 
+        WindowChildModel.prototype.watchElement = function() {
+          var _this = this;
+          return this.scope.$watch(function() {
+            var _ref;
+            if (!_this.element || !_this.html) {
+              return;
+            }
+            if (_this.html !== _this.element.html()) {
+              if (_this.gWin) {
+                if ((_ref = _this.opts) != null) {
+                  _ref.content = void 0;
+                }
+                _this.remove();
+                _this.createGWin();
+                return _this.showHide();
+              }
+            }
+          });
+        };
+
         WindowChildModel.prototype.createGWin = function() {
-          var defaults, html,
+          var defaults,
             _this = this;
-          if ((this.gWin == null) && (this.markerCtrl != null)) {
+          if (this.gWin == null) {
             defaults = this.opts != null ? this.opts : {};
-            html = _.isObject(this.element) ? this.element.html() : this.element;
-            this.opts = this.markerCtrl != null ? this.createWindowOptions(this.markerCtrl, this.scope, html, defaults) : {};
+            if (this.element) {
+              this.html = _.isObject(this.element) ? this.element.html() : this.element;
+            }
+            this.opts = this.createWindowOptions(this.markerCtrl, this.scope, this.html, defaults);
           }
           if ((this.opts != null) && !this.gWin) {
             if (this.opts.boxClass && (window.InfoBox && typeof window.InfoBox === 'function')) {
@@ -1978,6 +2003,14 @@ Nicholas McCready - https://twitter.com/nmccready
           }
         };
 
+        WindowChildModel.prototype.showHide = function() {
+          if (this.scope.show) {
+            return this.showWindow();
+          } else {
+            return this.hideWindow();
+          }
+        };
+
         WindowChildModel.prototype.getLatestPosition = function() {
           if ((this.gWin != null) && (this.markerCtrl != null)) {
             return this.gWin.setPosition(this.markerCtrl.getPosition());
@@ -1990,20 +2023,24 @@ Nicholas McCready - https://twitter.com/nmccready
           }
         };
 
-        WindowChildModel.prototype.destroy = function(manualOverride) {
-          var self;
-          if (manualOverride == null) {
-            manualOverride = false;
-          }
+        WindowChildModel.prototype.remove = function() {
           this.hideWindow();
           _.each(this.googleMapsHandles, function(h) {
             return google.maps.event.removeListener(h);
           });
           this.googleMapsHandles.length = 0;
+          return delete this.gWin;
+        };
+
+        WindowChildModel.prototype.destroy = function(manualOverride) {
+          var self;
+          if (manualOverride == null) {
+            manualOverride = false;
+          }
+          this.remove();
           if ((this.scope != null) && (this.needToManualDestroy || manualOverride)) {
             this.scope.$destroy();
           }
-          delete this.gWin;
           return self = void 0;
         };
 
